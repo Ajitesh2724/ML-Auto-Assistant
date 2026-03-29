@@ -9,86 +9,42 @@ from modules.model_evaluator import evaluate_model
 from modules.model_trainer import ModelTrainer
 
 
-
-def detect_task_type(y):
-    if y.dtype == "object":
-        return "classification"
-
-    if y.dtype in ["int64", "float64"]:
-        # continuous float → regression
-        if y.dtype == "float64":
-            return "regression"
-
-        # integer → check unique values
-        if y.nunique() < 10:
-            return "classification"
-        else:
-            return "regression"
-
-    return "regression"
-
-
-# -------------------------------
-# LOAD DATA
-# -------------------------------
+# load dataset
 df = pd.read_csv("data/sample.csv")
 
-print("Dataset Loaded Successfully\n")
+print("Dataset Loaded Successfully")
 
-# -------------------------------
-# ANALYZE DATA
-# -------------------------------
+# analyze dataset
 analyze_data(df)
 
-# -------------------------------
-# HANDLE MISSING VALUES
-# -------------------------------
-df = handle_missing_values(df)
+# missing values
+df = handle_missing_values(df, method="median")
 
-# -------------------------------
-# ENCODE CATEGORICAL VARIABLES
-# -------------------------------
-df = encode_categorical(df)
+# encoding
+df = encode_categorical(
+        df,
+        method="onehot",
+        target_column="target"  # only needed for target encoding
+)
 
-# -------------------------------
-# SCALE FEATURES
-# -------------------------------
-df = scale_features(df)
+# scaling
+df = scale_features(df, method="standard")
 
 print("\nFinal Preprocessed Dataset:\n")
-print(df.head())
 
-# -------------------------------
-# TARGET SELECTION
-# -------------------------------
-print("\nAvailable columns:", df.columns.tolist())
+print(df)
 
-target_column = input("Enter target column: ")
 
-if target_column not in df.columns:
-    raise ValueError("Invalid target column selected!")
-
-# Split dataset
+# Separate features and target
+target_column = "target"  # change this
 X = df.drop(columns=[target_column])
 y = df[target_column]
 
-# -------------------------------
-# TASK TYPE DETECTION (FIX)
-# -------------------------------
-task_type = detect_task_type(y)
-
-print(f"\nDetected Task Type: {task_type}")
-print("Target dtype:", y.dtype)
-print("Unique values:", y.nunique())
-
-# -------------------------------
-# FEATURE SELECTION
-# -------------------------------
-selector = FeatureSelector(task_type=task_type)
-
+# Feature Selection
+selector = FeatureSelector(task_type="classification")
 X_selected = selector.auto_select(X, y)
 
-print("\nSelected Features:\n")
+print("Final selected features:")
 print(X_selected.head())
 
 # Split dataset into training and testing sets
