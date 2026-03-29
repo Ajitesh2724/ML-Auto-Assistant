@@ -37,19 +37,13 @@ print("Dataset Loaded Successfully\n")
 # -------------------------------
 analyze_data(df)
 
-# -------------------------------
-# HANDLE MISSING VALUES
-# -------------------------------
+# handle missing values
 df = handle_missing_values(df)
 
-# -------------------------------
-# ENCODE CATEGORICAL VARIABLES
-# -------------------------------
+# encode categorical variables
 df = encode_categorical(df)
 
-# -------------------------------
-# SCALE FEATURES
-# -------------------------------
+# scale features
 df = scale_features(df)
 
 print("\nFinal Preprocessed Dataset:\n")
