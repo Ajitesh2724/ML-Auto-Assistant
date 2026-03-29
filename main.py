@@ -5,6 +5,10 @@ from modules.missing_handler import handle_missing_values
 from modules.encoder import encode_categorical
 from modules.scaler import scale_features
 from modules.feature_selector import FeatureSelector
+from modules.model_trainer import ModelTrainer
+from modules.model_evaluator import evaluate_model
+from sklearn.model_selection import train_test_split
+
 
 
 def detect_task_type(y):
@@ -81,3 +85,73 @@ X_selected = selector.auto_select(X, y)
 
 print("\nSelected Features:\n")
 print(X_selected.head())
+
+# -------------------------------
+# TRAIN TEST SPLIT
+# -------------------------------
+
+X_train, X_test, y_train, y_test = train_test_split(
+
+        X_selected,
+
+        y,
+
+        test_size=0.2,
+
+        random_state=42
+
+)
+
+print("\nTrain shape:", X_train.shape)
+print("Test shape:", X_test.shape)
+
+
+# -------------------------------
+# MODEL TRAINING
+# -------------------------------
+
+trainer = ModelTrainer(
+
+        task_type=task_type,
+
+        model_name="random_forest"   # can change later
+
+)
+
+model = trainer.train(
+
+        X_train,
+
+        y_train
+
+)
+
+
+# -------------------------------
+# MODEL PREDICTION
+# -------------------------------
+
+y_pred = trainer.predict(
+
+        X_test
+
+)
+
+
+# -------------------------------
+# MODEL EVALUATION
+# -------------------------------
+
+results = evaluate_model(
+
+        y_test,
+
+        y_pred,
+
+        problem_type=task_type
+
+)
+
+print("\nFinal Evaluation Results:")
+
+print(results)
