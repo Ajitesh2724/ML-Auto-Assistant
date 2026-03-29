@@ -1,18 +1,36 @@
 import pandas as pd
 
-def handle_missing_values(df):
+def handle_missing_values(df, method="mean"):
 
-    numeric_columns = df.select_dtypes(include=['float64','int64']).columns
-    categorical_columns = df.select_dtypes(include=['object']).columns
+    numeric_cols = df.select_dtypes(include=['int64','float64']).columns
+    cat_cols = df.select_dtypes(include=['object']).columns
 
-    # Fill numeric columns with mean
-    for col in numeric_columns:
-        df[col] = df[col].fillna(df[col].mean())
+    if method == "mean":
 
-    # Fill categorical columns with mode
-    for col in categorical_columns:
-        df[col] = df[col].fillna(df[col].mode()[0])
+        df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].mean())
 
-    print("\nMissing values handled successfully!")
+    elif method == "median":
+
+        df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].median())
+
+    elif method == "constant":
+
+        df[numeric_cols] = df[numeric_cols].fillna(0)
+
+        df[cat_cols] = df[cat_cols].fillna("Unknown")
+
+    elif method == "ffill":
+
+        df = df.fillna(method="ffill")
+
+    elif method == "bfill":
+
+        df = df.fillna(method="bfill")
+
+    else:
+
+        print("Invalid method selected")
+
+    print("\nMissing values handled using:", method)
 
     return df

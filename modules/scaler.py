@@ -1,15 +1,31 @@
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 
-def scale_features(df):
+def scale_features(df, method="standard"):
 
-    scaler = StandardScaler()
+    numeric_cols = df.select_dtypes(include=['int64','float64']).columns
 
-    numeric_columns = df.select_dtypes(include=['int64','float64']).columns
+    if method == "standard":
 
-    df[numeric_columns] = scaler.fit_transform(df[numeric_columns])
+        scaler = StandardScaler()
 
-    df[numeric_columns] = df[numeric_columns].round(2)
+    elif method == "minmax":
 
-    print("\nFeature scaling completed!")
+        scaler = MinMaxScaler()
+
+    elif method == "robust":
+
+        scaler = RobustScaler()
+
+    else:
+
+        print("Invalid scaling method")
+
+        return df
+
+    df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
+
+    df[numeric_cols] = df[numeric_cols].round(3)
+
+    print("\nScaling done using:", method)
 
     return df

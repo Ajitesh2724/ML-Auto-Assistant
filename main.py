@@ -14,14 +14,18 @@ print("Dataset Loaded Successfully")
 # analyze dataset
 analyze_data(df)
 
-# handle missing values
-df = handle_missing_values(df)
+# missing values
+df = handle_missing_values(df, method="median")
 
-# encode categorical variables
-df = encode_categorical(df)
+# encoding
+df = encode_categorical(
+        df,
+        method="onehot",
+        target_column="target"  # only needed for target encoding
+)
 
-# scale features
-df = scale_features(df)
+# scaling
+df = scale_features(df, method="standard")
 
 print("\nFinal Preprocessed Dataset:\n")
 
