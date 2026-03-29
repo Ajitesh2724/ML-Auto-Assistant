@@ -32,7 +32,7 @@ def detect_task_type(y):
 # -------------------------------
 # LOAD DATA
 # -------------------------------
-df = pd.read_csv("data/sample.csv")
+df = pd.read_csv(r"C:\Users\ajite\OneDrive\Desktop\ML-Auto-Assistant\data\sleep_health_dataset.csv")
 
 print("Dataset Loaded Successfully\n")
 
