@@ -4,7 +4,7 @@ from modules.data_analyzer import analyze_data
 from modules.missing_handler import handle_missing_values
 from modules.encoder import encode_categorical
 from modules.scaler import scale_features
-from feature_selector import FeatureSelector
+from modules.feature_selector import FeatureSelector
 
 # load dataset
 df = pd.read_csv("data/sample.csv")
