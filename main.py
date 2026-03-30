@@ -1,3 +1,4 @@
+
 import pandas as pd
 
 from modules.data_analyzer import analyze_data
@@ -13,19 +14,18 @@ from sklearn.model_selection import train_test_split
 
 
 # -------------------------------
-# TASK TYPE DETECTION
+# TASK TYPE DETECTION (ROBUST)
 # -------------------------------
 def detect_task_type(y):
-    if y.dtype == "object":
+    import pandas as pd
+
+    # Object or categorical → classification
+    if pd.api.types.is_object_dtype(y) or pd.api.types.is_categorical_dtype(y):
         return "classification"
 
-    if y.dtype == "float64":
-        return "regression"
-
-    if y.dtype == "int64":
-        if y.nunique() < 10:
-            return "classification"
-        return "regression"
+    # Few unique values → classification
+    if y.nunique() <= 20:
+        return "classification"
 
     return "regression"
 
@@ -47,7 +47,7 @@ analyze_data(df)
 
 
 # -------------------------------
-# DATA PROFILING (NEW)
+# DATA PROFILING
 # -------------------------------
 profiler = DataProfiler(df)
 numeric_cols, categorical_cols, id_cols = profiler.summary()
@@ -66,13 +66,30 @@ df = handle_missing_values(df)
 
 
 # -------------------------------
-# TARGET SELECTION (EARLY)
+# TARGET SELECTION
 # -------------------------------
 print("\nAvailable columns:", df.columns.tolist())
 target_column = input("Enter target column: ").strip()
 
 if target_column not in df.columns:
     raise ValueError("Invalid target column selected!")
+
+
+# -------------------------------
+# SPLIT X, y (BEFORE ENCODING)
+# -------------------------------
+X = df.drop(columns=[target_column])
+y = df[target_column]
+
+
+# -------------------------------
+# DETECT TASK TYPE (FIXED)
+# -------------------------------
+task_type = detect_task_type(y)
+
+print(f"\nDetected Task Type: {task_type}")
+print("Target dtype:", y.dtype)
+print("Unique values:", y.nunique())
 
 
 # -------------------------------
@@ -107,20 +124,19 @@ print(df.head())
 
 
 # -------------------------------
-# SPLIT X, y
+# SPLIT AGAIN AFTER PROCESSING
 # -------------------------------
 X = df.drop(columns=[target_column])
 y = df[target_column]
 
 
 # -------------------------------
-# DETECT TASK TYPE
+# SAFETY CHECK (CRITICAL)
 # -------------------------------
-task_type = detect_task_type(y)
-
-print(f"\nDetected Task Type: {task_type}")
-print("Target dtype:", y.dtype)
-print("Unique values:", y.nunique())
+if task_type == "regression" and y.nunique() <= 20:
+    raise ValueError(
+        "❌ Regression selected but target looks categorical. Check detection logic!"
+    )
 
 
 # -------------------------------
@@ -149,6 +165,18 @@ X_train, X_test, y_train, y_test = train_test_split(
 
 print("\nTrain shape:", X_train.shape)
 print("Test shape:", X_test.shape)
+
+
+# -------------------------------
+# FINAL TARGET SAFETY (PREVENT YOUR ERROR)
+# -------------------------------
+if task_type == "classification":
+    from sklearn.preprocessing import LabelEncoder
+
+    if pd.api.types.is_object_dtype(y_train) or str(y_train.dtype) == "category":
+        le = LabelEncoder()
+        y_train = le.fit_transform(y_train)
+        y_test = le.transform(y_test)
 
 
 # -------------------------------
