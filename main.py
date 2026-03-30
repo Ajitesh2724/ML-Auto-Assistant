@@ -1,6 +1,9 @@
-
 import pandas as pd
 
+from llm_layer.llm_agent import LLMAgent
+from llm_layer.decision_engine import DecisionEngine
+
+# existing modules (unchanged)
 from modules.data_analyzer import analyze_data
 from modules.data_profiler import DataProfiler
 from modules.missing_handler import handle_missing_values
@@ -14,23 +17,6 @@ from sklearn.model_selection import train_test_split
 
 
 # -------------------------------
-# TASK TYPE DETECTION (ROBUST)
-# -------------------------------
-def detect_task_type(y):
-    import pandas as pd
-
-    # Object or categorical → classification
-    if pd.api.types.is_object_dtype(y) or pd.api.types.is_categorical_dtype(y):
-        return "classification"
-
-    # Few unique values → classification
-    if y.nunique() <= 20:
-        return "classification"
-
-    return "regression"
-
-
-# -------------------------------
 # LOAD DATA
 # -------------------------------
 df = pd.read_csv(
@@ -41,34 +27,9 @@ print("Dataset Loaded Successfully\n")
 
 
 # -------------------------------
-# ANALYZE DATA
+# TARGET SELECTION (same as before)
 # -------------------------------
-analyze_data(df)
-
-
-# -------------------------------
-# DATA PROFILING
-# -------------------------------
-profiler = DataProfiler(df)
-numeric_cols, categorical_cols, id_cols = profiler.summary()
-
-
-# -------------------------------
-# DROP ID COLUMNS
-# -------------------------------
-df = df.drop(columns=id_cols, errors="ignore")
-
-
-# -------------------------------
-# HANDLE MISSING VALUES
-# -------------------------------
-df = handle_missing_values(df)
-
-
-# -------------------------------
-# TARGET SELECTION
-# -------------------------------
-print("\nAvailable columns:", df.columns.tolist())
+print("Available columns:", df.columns.tolist())
 target_column = input("Enter target column: ").strip()
 
 if target_column not in df.columns:
@@ -76,139 +37,81 @@ if target_column not in df.columns:
 
 
 # -------------------------------
-# SPLIT X, y (BEFORE ENCODING)
+# TASK TYPE DETECTION (reuse your function)
 # -------------------------------
-X = df.drop(columns=[target_column])
-y = df[target_column]
+def detect_task_type(y):
+
+    if y.dtype == "object":
+        return "classification"
+
+    if y.nunique() <= 20:
+        return "classification"
+
+    return "regression"
 
 
-# -------------------------------
-# DETECT TASK TYPE (FIXED)
-# -------------------------------
-task_type = detect_task_type(y)
+task_type = detect_task_type(df[target_column])
 
-print(f"\nDetected Task Type: {task_type}")
-print("Target dtype:", y.dtype)
-print("Unique values:", y.nunique())
-
-
-# -------------------------------
-# ENCODING (SAFE)
-# -------------------------------
-df = encode_categorical(
-    df,
-    method="onehot",
-    target_column=target_column
-)
+print("\nDetected task:", task_type)
 
 
 # -------------------------------
-# CONVERT BOOL → INT
+# CREATE CONTEXT FOR LLM
 # -------------------------------
-bool_cols = df.select_dtypes(include="bool").columns
-df[bool_cols] = df[bool_cols].astype(int)
+context = {
 
+    "df": df,
 
-# -------------------------------
-# SCALING (SAFE)
-# -------------------------------
-df = scale_features(
-    df,
-    method="standard",
-    target_column=target_column
-)
+    "target": target_column,
 
+    "task_type": task_type,
 
-print("\nFinal Preprocessed Dataset:\n")
-print(df.head())
+    "steps_done": [],
 
+    "missing":
 
-# -------------------------------
-# SPLIT AGAIN AFTER PROCESSING
-# -------------------------------
-X = df.drop(columns=[target_column])
-y = df[target_column]
+        df.isnull().sum().sum() > 0,
 
+    "categorical":
 
-# -------------------------------
-# SAFETY CHECK (CRITICAL)
-# -------------------------------
-if task_type == "regression" and y.nunique() <= 20:
-    raise ValueError(
-        "❌ Regression selected but target looks categorical. Check detection logic!"
-    )
+        len(df.select_dtypes(include="object").columns) > 0,
+
+    "scaled": False,
+
+    "trained": False
+
+}
 
 
 # -------------------------------
-# FEATURE SELECTION
+# INITIALIZE LLM
 # -------------------------------
-selector = FeatureSelector(task_type=task_type)
+agent = LLMAgent()
 
-if X.shape[1] > 1:
-    X_selected = selector.auto_select(X, y)
-else:
-    X_selected = X
-
-print("\nSelected Features:\n")
-print(X_selected.head())
+engine = DecisionEngine()
 
 
 # -------------------------------
-# TRAIN TEST SPLIT
+# LLM LOOP
 # -------------------------------
-X_train, X_test, y_train, y_test = train_test_split(
-    X_selected,
-    y,
-    test_size=0.2,
-    random_state=42
-)
+for step in range(10):
 
-print("\nTrain shape:", X_train.shape)
-print("Test shape:", X_test.shape)
+    print("\n====================")
+    print("STEP", step)
+
+    decision = agent.decide(context)
+
+    print("LLM decision:", decision)
 
 
-# -------------------------------
-# FINAL TARGET SAFETY (PREVENT YOUR ERROR)
-# -------------------------------
-if task_type == "classification":
-    from sklearn.preprocessing import LabelEncoder
+    result = engine.run(decision, context)
 
-    if pd.api.types.is_object_dtype(y_train) or str(y_train.dtype) == "category":
-        le = LabelEncoder()
-        y_train = le.fit_transform(y_train)
-        y_test = le.transform(y_test)
+    if isinstance(result, dict) and result.get("stop"):
+
+        break
 
 
 # -------------------------------
-# MODEL TRAINING
+# OPTIONAL: SHOW FINAL DATA
 # -------------------------------
-trainer = ModelTrainer(
-    task_type=task_type,
-    model_name="auto"
-)
-
-model = trainer.train(
-    X_train,
-    y_train,
-    X_test,
-    y_test
-)
-
-
-# -------------------------------
-# PREDICTION
-# -------------------------------
-y_pred = trainer.predict(X_test)
-
-print(y_pred)
-# -------------------------------
-# EVALUATION
-# -------------------------------
-results = evaluate_model(
-    y_test,
-    y_pred,
-    problem_type=task_type
-)
-
-print("\nFinal Evaluation Results:")
-print(results)
+print("\nPipeline completed")
