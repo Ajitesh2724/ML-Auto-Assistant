@@ -4,12 +4,14 @@ from llm_layer.tool_registry import TOOLS
 def execute_tool(action, context, **kwargs):
 
     if action == "stop":
-
         print("Pipeline finished")
         return {"stop": True}
 
+    if action not in TOOLS:
+        raise ValueError(f"Unknown action: {action}")
+
     print("Running:", action)
 
-    result = TOOLS[action](context, **kwargs)
+    updated_context = TOOLS[action](context, **kwargs)
 
-    return result
+    return updated_context
