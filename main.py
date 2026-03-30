@@ -34,7 +34,7 @@ def detect_task_type(y):
 # LOAD DATA
 # -------------------------------
 df = pd.read_csv(
-    r"C:\Users\abhra\OneDrive\Documents\GitHub\ML-Auto-Assistant\data\sleep_health_dataset.csv"
+    r"C:\Users\ajite\OneDrive\Desktop\ML-Auto-Assistant\data\sleep_health_dataset.csv"
 )
 
 print("Dataset Loaded Successfully\n")
@@ -156,10 +156,15 @@ print("Test shape:", X_test.shape)
 # -------------------------------
 trainer = ModelTrainer(
     task_type=task_type,
-    model_name="random_forest"
+    model_name="auto"
 )
 
-model = trainer.train(X_train, y_train)
+model = trainer.train(
+    X_train,
+    y_train,
+    X_test,
+    y_test
+)
 
 
 # -------------------------------
@@ -167,7 +172,7 @@ model = trainer.train(X_train, y_train)
 # -------------------------------
 y_pred = trainer.predict(X_test)
 
-
+print(y_pred)
 # -------------------------------
 # EVALUATION
 # -------------------------------
