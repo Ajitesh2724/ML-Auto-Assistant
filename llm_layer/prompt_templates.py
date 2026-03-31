@@ -1,3 +1,8 @@
+# =========================================================
+# 🧠 LLM PROMPT TEMPLATES
+# =========================================================
+
+
 def get_decision_prompt(context):
 
     return f"""
@@ -24,19 +29,60 @@ train_model
 evaluate
 stop
 
-STRICT RULES:
+Rules:
 
-- If "analyze" NOT in steps_done → choose analyze
-- If missing=True → choose handle_missing
-- If categorical=True → choose encode
-- If scaled=False → choose scale
-- If not trained → choose train_model
-- If trained=True and evaluate not done → choose evaluate
-- If everything done → choose stop
+- Do not repeat steps unnecessarily
+- Follow correct ML order
+- Return only JSON
 
-- DO NOT repeat unnecessary steps
-- DO NOT choose analyze more than once
+Format:
+{{"action":"<step>"}}
+"""
 
-Return JSON only:
-{{"action":"<one_action>"}}
+
+# ---------------------------------------------------------
+# ✅ EXPLANATION
+# ---------------------------------------------------------
+def get_explanation_prompt(results):
+
+    return f"""
+You are an expert Machine Learning assistant.
+
+Analyze:
+
+Task: {results['task_type']}
+Model: {results['model']}
+Metrics: {results['metrics']}
+Top Features: {results['features'][:5]}
+
+Answer:
+
+1. Why this model was selected
+2. Is performance good or bad
+3. Overfitting/underfitting signs
+4. 3 improvements
+5. Business interpretation
+
+Keep it simple and clear.
+"""
+
+
+# ---------------------------------------------------------
+# ✅ CHAT
+# ---------------------------------------------------------
+def get_chat_prompt(results, user_question):
+
+    return f"""
+You are an ML assistant.
+
+Context:
+Task: {results['task_type']}
+Model: {results['model']}
+Metrics: {results['metrics']}
+Features: {results['features']}
+
+User Question:
+{user_question}
+
+Answer clearly and practically.
 """
