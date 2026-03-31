@@ -31,22 +31,24 @@ if uploaded_file:
     df = pd.read_csv(uploaded_file)
 
     # -------------------------------
-    # DATA OVERVIEW
+    # DATA OVERVIEW (TAB 1)
     # -------------------------------
-    st.markdown("### 📊 Dataset Overview")
+    tab1, tab2, tab3 = st.tabs(["📊 Data", "📈 Model", "🤖 AI Chat"])
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Rows", df.shape[0])
-    c2.metric("Columns", df.shape[1])
-    c3.metric("Missing Values", int(df.isnull().sum().sum()))
+    with tab1:
 
-    with st.expander("🔍 Preview Data"):
-        st.dataframe(df.head(100), use_container_width=True)
+        st.markdown("### 📊 Dataset Overview")
 
-    st.divider()
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Rows", df.shape[0])
+        c2.metric("Columns", df.shape[1])
+        c3.metric("Missing Values", int(df.isnull().sum().sum()))
+
+        with st.expander("🔍 Preview Data"):
+            st.dataframe(df.head(100), use_container_width=True)
 
     # -------------------------------
-    # TARGET
+    # TARGET SELECTION
     # -------------------------------
     target_column = st.selectbox("🎯 Select Target Column", df.columns)
 
@@ -60,32 +62,30 @@ if uploaded_file:
         with st.spinner("Training model..."):
             results = run_pipeline(df, target_column)
 
-        # ✅ STORE RESULTS
         st.session_state["results"] = results
-        st.session_state["chat_history"] = []  # reset chat
+        st.session_state["chat_history"] = []
 
-    # -------------------------------
-    # LOAD RESULTS FROM STATE
-    # -------------------------------
     results = st.session_state.get("results", None)
-
     if results:
 
-        if not results["success"]:
-            st.error(results["error"])
+            if not results["success"]:
+                st.error(results["error"])
 
-        else:
-            st.success("✅ Pipeline Completed")
+            else:
+                st.success("✅ Pipeline Completed")
 
-            # -------------------------------
-            # MAIN LAYOUT
-            # -------------------------------
-            left, right = st.columns([2, 1])
+    # ===============================
+    # MODEL TAB
+    # ===============================
+    with tab2:
 
-            # =========================================
-            # LEFT → ML RESULTS
-            # =========================================
-            with left:
+        if results:
+
+            if not results["success"]:
+                st.error(results["error"])
+
+            else:
+                
 
                 st.markdown("## 📊 Model Results")
 
@@ -93,18 +93,13 @@ if uploaded_file:
                 col1.info(f"Task: {results['task_type']}")
                 col2.success(f"Model: {results['model']}")
 
-                # -------------------------------
-                # METRICS
-                # -------------------------------
+                # Metrics
                 st.markdown("### 📈 Performance")
-
                 metric_cols = st.columns(len(results["metrics"]))
                 for i, (k, v) in enumerate(results["metrics"].items()):
                     metric_cols[i].metric(k, round(v, 4))
 
-                # -------------------------------
-                # FEATURE IMPORTANCE
-                # -------------------------------
+                # Feature Importance
                 st.markdown("### 🧠 Feature Importance")
 
                 if results.get("feature_importance"):
@@ -125,65 +120,82 @@ if uploaded_file:
                 else:
                     st.info("No feature importance available")
 
-                # -------------------------------
-                # FEATURES
-                # -------------------------------
                 with st.expander("📌 Selected Features"):
                     st.write(results["features"])
 
-            # =========================================
-            # RIGHT → AI PANEL
-            # =========================================
-            with right:
+        else:
+            st.info("Run the pipeline to see results")
 
-                st.markdown("## 🤖 AI Assistant")
+    # ===============================
+    # AI CHAT TAB
+    # ===============================
+    with tab3:
 
-                from llm_layer.llm_agent import LLMAgent
-                from llm_layer.prompt_templates import (
-                    get_explanation_prompt,
-                    get_chat_prompt
-                )
+        if results:
 
-                agent = LLMAgent()
+            from llm_layer.llm_agent import LLMAgent
+            from llm_layer.prompt_templates import (
+                get_explanation_prompt,
+                get_chat_prompt
+            )
 
-                # -------------------------------
-                # COLLAPSIBLE AI OVERVIEW
-                # -------------------------------
-                with st.expander("📘 AI Overview", expanded=False):
+            agent = LLMAgent()
 
-                    with st.spinner("Generating insights..."):
-                        prompt = get_explanation_prompt(results)
-                        explanation = agent.call_llm(prompt)
+            st.markdown("## 🤖 AI Assistant")
 
-                    st.write(explanation)
+            # -------------------------------
+            # COLLAPSIBLE OVERVIEW
+            # -------------------------------
+            with st.expander("📘 AI Overview", expanded=False):
 
-                # -------------------------------
-                # CHAT SECTION
-                # -------------------------------
-                st.markdown("### 💬 Chat with AI")
+                with st.spinner("Generating insights..."):
+                    prompt = get_explanation_prompt(results)
+                    explanation = agent.call_llm(prompt)
 
-                # Show chat history
-                for chat in st.session_state["chat_history"]:
-                    st.write(f"🧑 {chat['user']}")
-                    st.write(f"🤖 {chat['bot']}")
+                st.write(explanation)
 
-                # Chat form (prevents rerun reset)
-                with st.form("chat_form", clear_on_submit=True):
+            st.divider()
 
-                    user_q = st.text_input("Ask about your model...")
+            # -------------------------------
+            # CHAT WINDOW (LIMITED)
+            # -------------------------------
+            st.markdown("### 💬 Chat")
 
-                    submitted = st.form_submit_button("Send")
+            MAX_VISIBLE = 10
+            visible_chats = st.session_state["chat_history"][-MAX_VISIBLE:]
 
-                    if submitted and user_q:
+            for chat in visible_chats:
+                st.write(f"🧑 {chat['user']}")
+                st.write(f"🤖 {chat['bot']}")
 
-                        with st.spinner("Thinking..."):
-                            chat_prompt = get_chat_prompt(results, user_q)
-                            answer = agent.call_llm(chat_prompt)
+            # -------------------------------
+            # CLEAR CHAT
+            # -------------------------------
+            if st.button("🧹 Clear Chat"):
+                st.session_state["chat_history"] = []
+                st.rerun()
 
-                        # Save chat
-                        st.session_state["chat_history"].append({
-                            "user": user_q,
-                            "bot": answer
-                        })
+            # -------------------------------
+            # CHAT INPUT
+            # -------------------------------
+            with st.form("chat_form", clear_on_submit=True):
 
-                        st.rerun()
+                user_q = st.text_input("Ask about your model...")
+
+                submitted = st.form_submit_button("Send")
+
+                if submitted and user_q:
+
+                    with st.spinner("Thinking..."):
+                        chat_prompt = get_chat_prompt(results, user_q)
+                        answer = agent.call_llm(chat_prompt)
+
+                    st.session_state["chat_history"].append({
+                        "user": user_q,
+                        "bot": answer
+                    })
+
+                    st.rerun()
+
+        else:
+            st.info("Run the pipeline first to enable AI assistant")
