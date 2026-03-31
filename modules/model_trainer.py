@@ -1,6 +1,5 @@
 from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.svm import LinearSVC
 
 from sklearn.metrics import accuracy_score, r2_score
 
@@ -28,8 +27,6 @@ class ModelTrainer:
     # -------------------------------
     def _get_models(self, n_samples):
 
-        LARGE_DATA_THRESHOLD = 20000
-
         # -------------------------------
         # CLASSIFICATION
         # -------------------------------
@@ -43,11 +40,6 @@ class ModelTrainer:
                     n_jobs=-1
                 )
             }
-
-            if n_samples <= LARGE_DATA_THRESHOLD:
-                models["linear_svm"] = LinearSVC(max_iter=3000)
-            else:
-                print("⚡ Large dataset detected → skipping SVM")
 
             return models
 
@@ -66,7 +58,6 @@ class ModelTrainer:
                 )
             }
 
-            print("⚡ SVR removed for stability (AutoML safe mode)")
             return models
 
         else:
