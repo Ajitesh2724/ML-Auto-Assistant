@@ -5,9 +5,7 @@ from llm_layer.llm_agent import LLMAgent
 from llm_layer.decision_engine import DecisionEngine
 
 
-# -------------------------------
-# LOAD DATA
-# -------------------------------
+
 path = r"C:\Users\abhra\OneDrive\Documents\GitHub\ML-Auto-Assistant\data\sleep_health_dataset.csv"
 
 print("File exists:", os.path.exists(path))
@@ -19,9 +17,7 @@ df = pd.read_csv(path)
 print("Dataset Loaded Successfully\n")
 
 
-# -------------------------------
-# TARGET SELECTION
-# -------------------------------
+
 print("Available columns:", df.columns.tolist())
 target_column = input("Enter target column: ").strip()
 
@@ -29,9 +25,7 @@ if target_column not in df.columns:
     raise ValueError("Invalid target column selected!")
 
 
-# -------------------------------
-# TASK TYPE DETECTION
-# -------------------------------
+
 def detect_task_type(y):
     if y.dtype == "object":
         return "classification"
@@ -44,9 +38,7 @@ task_type = detect_task_type(df[target_column])
 print("\nDetected task:", task_type)
 
 
-# -------------------------------
-# CONTEXT
-# -------------------------------
+
 context = {
     "df": df,
     "target": target_column,
@@ -60,16 +52,10 @@ context = {
 }
 
 
-# -------------------------------
-# INIT
-# -------------------------------
 agent = LLMAgent()
 engine = DecisionEngine()
 
 
-# -------------------------------
-# RULE-BASED CONTROLLER
-# -------------------------------
 def get_next_rule_action(context):
 
     if "analyze" not in context["steps_done"]:
@@ -96,9 +82,6 @@ def get_next_rule_action(context):
     return "stop"
 
 
-# -------------------------------
-# LOOP
-# -------------------------------
 MAX_STEPS = 15
 
 for step in range(MAX_STEPS):
@@ -112,17 +95,13 @@ for step in range(MAX_STEPS):
         if k != "df":
             print(f"{k}: {v}")
 
-    # -------------------------------
-    # LLM DECISION
-    # -------------------------------
+   
     decision = agent.decide(context)
     llm_action = decision.get("action")
 
     print("LLM action:", llm_action)
 
-    # -------------------------------
-    # RULE CHECK (SAFE GUARD)
-    # -------------------------------
+    
     rule_action = get_next_rule_action(context)
 
     if llm_action != rule_action:
@@ -131,14 +110,10 @@ for step in range(MAX_STEPS):
     else:
         action = llm_action
 
-    # -------------------------------
-    # EXECUTE (IMPORTANT: single source of truth)
-    # -------------------------------
+   
     result = engine.run({"action": action}, context)
 
-    # -------------------------------
-    # STOP CONDITIONS
-    # -------------------------------
+ 
     if action == "stop":
         print("Pipeline stopped.")
         break

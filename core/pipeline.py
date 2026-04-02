@@ -9,9 +9,7 @@ from modules.model_trainer import ModelTrainer
 from modules.model_evaluator import evaluate_model
 
 
-# -------------------------------
-# TASK DETECTION
-# -------------------------------
+
 def detect_task_type(y):
 
     if y.dtype == "object":
@@ -23,9 +21,7 @@ def detect_task_type(y):
     return "regression"
 
 
-# -------------------------------
-# FEATURE IMPORTANCE EXTRACTOR
-# -------------------------------
+
 def get_feature_importance(model, feature_names):
 
     importance = None
@@ -34,7 +30,7 @@ def get_feature_importance(model, feature_names):
     if hasattr(model, "feature_importances_"):
         importance = model.feature_importances_
 
-    # linear models
+    
     elif hasattr(model, "coef_"):
 
         importance = model.coef_
@@ -45,7 +41,7 @@ def get_feature_importance(model, feature_names):
 
         importance = abs(importance)
 
-    # model does not support importance
+   
     if importance is None:
         return None
 
@@ -62,54 +58,55 @@ def get_feature_importance(model, feature_names):
     return importance_df
 
 
-# -------------------------------
-# MAIN PIPELINE
-# -------------------------------
+
 def run_pipeline(
     df,
     target_column,
     task_type="auto"
 ):
 
+    logs = []
+
+    def log(msg):
+        print(msg)
+        logs.append(msg)
+
     try:
 
-        # -------------------------------
-        # TASK TYPE
-        # -------------------------------
+        log("🚀 Pipeline started")
+
         if task_type == "auto":
             task_type = detect_task_type(df[target_column])
 
-        # -------------------------------
-        # PROFILING
-        # -------------------------------
+        log(f"[Task] Detected task type: {task_type}")
+
+       
         profiler = DataProfiler(df)
         numeric_cols, categorical_cols, _ = profiler.summary()
 
-        # -------------------------------
-        # HANDLE MISSING
-        # -------------------------------
-        df = df.fillna(0)
+        log(f"[DataProfiler] Numeric Columns: {numeric_cols}")
+        log(f"[DataProfiler] Categorical Columns: {categorical_cols}")
 
-        # -------------------------------
-        # ENCODING
-        # -------------------------------
+       
+        df = df.fillna(0)
+        log("[Preprocessing] Missing values filled with 0")
+
+       
         df = encode_categorical(
             df,
             method="onehot",
             target_column=target_column
         )
+        log("[Preprocessing] Encoding applied: onehot")
 
-        # -------------------------------
-        # SCALING
-        # -------------------------------
+        
         df = scale_features(
             df,
             target_column=target_column
         )
+        log("[Preprocessing] Scaling applied: standard")
 
-        # -------------------------------
-        # SPLIT
-        # -------------------------------
+       
         X = df.drop(columns=[target_column])
         y = df[target_column]
 
@@ -120,9 +117,11 @@ def run_pipeline(
             random_state=42
         )
 
-        # -------------------------------
-        # FEATURE SELECTION
-        # -------------------------------
+        log(f"[Split] Train shape: {X_train.shape}, Test shape: {X_test.shape}")
+
+  
+        log("[FeatureSelector] Starting feature selection")
+
         selector = FeatureSelector(task_type=task_type)
 
         X_train = selector.auto_select(
@@ -130,15 +129,17 @@ def run_pipeline(
             y_train
         )
 
+        log(f"[FeatureSelector] Selected {len(X_train.columns)} features")
+
         # align test columns safely
         X_test = X_test.reindex(
             columns=X_train.columns,
             fill_value=0
         )
 
-        # -------------------------------
-        # MODEL TRAINING
-        # -------------------------------
+       
+        log("[ModelTrainer] Training models...")
+
         trainer = ModelTrainer(task_type=task_type)
 
         trainer.train(
@@ -148,16 +149,18 @@ def run_pipeline(
             y_val=y_test
         )
 
+        log(f"[ModelTrainer] Best model: {trainer.best_model_name}")
+
         preds = trainer.predict(X_test)
 
-        # -------------------------------
-        # EVALUATION
-        # -------------------------------
+        
         metrics = evaluate_model(
             y_test,
             preds,
             problem_type=task_type
         )
+
+        log(f"[Evaluation] Metrics: {metrics}")
 
         # -------------------------------
         # FEATURE IMPORTANCE
@@ -169,8 +172,12 @@ def run_pipeline(
 
         if importance_df is not None:
             importance_dict = importance_df.to_dict()
+            log("[FeatureImportance] Extracted successfully")
         else:
             importance_dict = None
+            log("[FeatureImportance] Not available for this model")
+
+        log("✅ Pipeline completed successfully")
 
         # -------------------------------
         # RETURN
@@ -187,14 +194,20 @@ def run_pipeline(
 
             "features": list(X_train.columns),
 
-            "feature_importance": importance_dict
+            "feature_importance": importance_dict,
+
+            "logs": logs   # 🔥 THIS FIXES YOUR UI
         }
 
     except Exception as e:
+
+        log(f"[ERROR] {str(e)}")
 
         return {
 
             "success": False,
 
-            "error": str(e)
+            "error": str(e),
+
+            "logs": logs   # even errors will show logs
         }

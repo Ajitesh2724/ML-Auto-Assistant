@@ -22,14 +22,10 @@ class ModelTrainer:
         self.best_model_name = None
 
 
-    # -------------------------------
-    # MODEL SELECTION
-    # -------------------------------
+    
     def _get_models(self, n_samples):
 
-        # -------------------------------
-        # CLASSIFICATION
-        # -------------------------------
+        
         if self.task_type == "classification":
 
             models = {
@@ -43,9 +39,7 @@ class ModelTrainer:
 
             return models
 
-        # -------------------------------
-        # REGRESSION
-        # -------------------------------
+ 
         elif self.task_type == "regression":
 
             models = {
@@ -64,17 +58,13 @@ class ModelTrainer:
             raise ValueError("Invalid task type")
 
 
-    # -------------------------------
-    # TRAIN
-    # -------------------------------
+
     def train(self, X_train, y_train, X_val=None, y_val=None):
 
         n_samples = X_train.shape[0]
         models = self._get_models(n_samples)
 
-        # -------------------------------
-        # MANUAL MODEL
-        # -------------------------------
+    
         if self.model_name != "auto":
 
             if self.model_name not in models:
@@ -88,9 +78,7 @@ class ModelTrainer:
             print(f"\nSelected Model: {self.best_model_name}")
             return self.best_model
 
-        # -------------------------------
-        # AUTO MODEL SELECTION
-        # -------------------------------
+        
         print("\nRunning Auto Model Selection...\n")
 
         best_score = -999
@@ -125,16 +113,11 @@ class ModelTrainer:
         return self.best_model
 
 
-    # -------------------------------
-    # PREDICT
-    # -------------------------------
+
     def predict(self, X_test):
         return self.best_model.predict(X_test)
 
 
-    # -------------------------------
-    # SAVE MODEL
-    # -------------------------------
     def save_model(self, path="best_model.pkl"):
         joblib.dump(self.best_model, path)
         print("\nModel saved at", path)

@@ -11,26 +11,19 @@ from modules import (
 from sklearn.model_selection import train_test_split
 
 
-# -------------------------------
-# ANALYZE
-# -------------------------------
 def analyze_tool(ctx):
     data_analyzer.analyze_data(ctx["df"])
     return ctx
 
 
-# -------------------------------
-# HANDLE MISSING
-# -------------------------------
+
 def handle_missing_tool(ctx):
     ctx["df"] = missing_handler.handle_missing_values(ctx["df"])
     ctx["missing"] = False
     return ctx
 
 
-# -------------------------------
-# ENCODE
-# -------------------------------
+
 def encode_tool(ctx):
     ctx["df"] = encoder.encode_categorical(
         ctx["df"],
@@ -41,9 +34,6 @@ def encode_tool(ctx):
     return ctx
 
 
-# -------------------------------
-# SCALE
-# -------------------------------
 def scale_tool(ctx):
     ctx["df"] = scaler.scale_features(
         ctx["df"],
@@ -53,9 +43,6 @@ def scale_tool(ctx):
     return ctx
 
 
-# -------------------------------
-# FEATURE SELECTION
-# -------------------------------
 def feature_select_tool(ctx):
     fs = feature_selector.FeatureSelector(
         task_type=ctx["task_type"]
@@ -73,9 +60,7 @@ def feature_select_tool(ctx):
     return ctx
 
 
-# -------------------------------
-# TRAIN MODEL
-# -------------------------------
+
 def train_model_tool(ctx):
     X = ctx["df"].drop(columns=[ctx["target"]])
     y = ctx["df"][ctx["target"]]
@@ -96,9 +81,7 @@ def train_model_tool(ctx):
     return ctx
 
 
-# -------------------------------
-# EVALUATE
-# -------------------------------
+
 def evaluate_tool(ctx):
     X = ctx["df"].drop(columns=[ctx["target"]])
     y = ctx["df"][ctx["target"]]
@@ -115,9 +98,6 @@ def evaluate_tool(ctx):
     return ctx
 
 
-# -------------------------------
-# TOOL REGISTRY
-# -------------------------------
 TOOLS = {
     "analyze": analyze_tool,
     "handle_missing": handle_missing_tool,

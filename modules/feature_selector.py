@@ -15,27 +15,23 @@ class FeatureSelector:
     def __init__(self, task_type="classification"):
         self.task_type = task_type
 
-    # -------------------------------
-    # DATA PREPARATION (SAFE)
-    # -------------------------------
+   
     def _prepare_data(self, X):
         X = X.copy()
 
-        # Convert bool → int
+      
         bool_cols = X.select_dtypes(include="bool").columns
         X[bool_cols] = X[bool_cols].astype(int)
 
-        # Keep only numeric
+       
         X = X.select_dtypes(include=[np.number])
 
-        # Fill NaNs
+       
         X = X.fillna(0)
 
         return X
 
-    # -------------------------------
-    # CORRELATION FILTER
-    # -------------------------------
+   
     def correlation_filter(self, X, threshold=0.95):
         X = self._prepare_data(X)
 
@@ -58,9 +54,7 @@ class FeatureSelector:
         print(f"[FeatureSelector] Dropping {len(to_drop)} correlated features")
         return X.drop(columns=to_drop)
 
-    # -------------------------------
-    # FAST FEATURE SELECTION
-    # -------------------------------
+
     def select_k_best(self, X, y, k=10, method="f_score"):
         X = self._prepare_data(X)
 
@@ -81,9 +75,7 @@ class FeatureSelector:
 
         return pd.DataFrame(X_selected, columns=selected_features)
 
-    # -------------------------------
-    # RANDOM FOREST IMPORTANCE (OPTIMIZED)
-    # -------------------------------
+    
     def random_forest_importance(self, X, y, top_n=10):
         X = self._prepare_data(X)
 

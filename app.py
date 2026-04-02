@@ -13,6 +13,9 @@ if "results" not in st.session_state:
 if "chat_history" not in st.session_state:
     st.session_state["chat_history"] = []
 
+if "run_clicked" not in st.session_state:
+    st.session_state["run_clicked"] = False
+
 # -------------------------------
 # HEADER
 # -------------------------------
@@ -30,11 +33,11 @@ if uploaded_file:
 
     df = pd.read_csv(uploaded_file)
 
-    # -------------------------------
-    # DATA OVERVIEW (TAB 1)
-    # -------------------------------
     tab1, tab2, tab3 = st.tabs(["📊 Data", "📈 Model", "🤖 AI Chat"])
 
+    # ===============================
+    # DATA TAB
+    # ===============================
     with tab1:
 
         st.markdown("### 📊 Dataset Overview")
@@ -45,32 +48,43 @@ if uploaded_file:
         c3.metric("Missing Values", int(df.isnull().sum().sum()))
 
         with st.expander("🔍 Preview Data"):
-            st.dataframe(df.head(100), use_container_width=True)
+            st.dataframe(df.head(100), width="stretch")
 
-    # -------------------------------
-    # TARGET SELECTION
-    # -------------------------------
-    target_column = st.selectbox("🎯 Select Target Column", df.columns)
+        st.divider()
 
-    # -------------------------------
-    # RUN PIPELINE
-    # -------------------------------
-    if st.button("🚀 Run Pipeline"):
+        # -------------------------------
+        # PIPELINE CONTROL
+        # -------------------------------
+        st.markdown("### ⚙️ Train Model")
 
-        from core.pipeline import run_pipeline
+        target_column = st.selectbox("🎯 Select Target Column", df.columns)
 
-        with st.spinner("Training model..."):
-            results = run_pipeline(df, target_column)
+        if st.button("🚀 Run Pipeline"):
+            st.session_state["run_clicked"] = True
+            st.session_state["results"] = None  # reset previous
 
-        st.session_state["results"] = results
-        st.session_state["chat_history"] = []
+        # -------------------------------
+        # SAFE EXECUTION (NO DUPLICATE RUN)
+        # -------------------------------
+        if st.session_state.get("run_clicked", False):
 
-    results = st.session_state.get("results", None)
-    if results:
+            from core.pipeline import run_pipeline
 
-            if not results["success"]:
-                st.error(results["error"])
+            with st.spinner("Training model..."):
+                results = run_pipeline(df, target_column)
 
+            st.session_state["results"] = results
+            st.session_state["chat_history"] = []
+            st.session_state["run_clicked"] = False  # 🔥 prevent rerun loop
+
+        # -------------------------------
+        # STATUS MESSAGE
+        # -------------------------------
+        results = st.session_state.get("results", None)
+
+        if results:
+            if not results.get("success", False):
+                st.error(results.get("error", "Unknown error"))
             else:
                 st.success("✅ Pipeline Completed")
 
@@ -79,59 +93,105 @@ if uploaded_file:
     # ===============================
     with tab2:
 
-        if results:
+        results = st.session_state.get("results", None)
 
-            if not results["success"]:
-                st.error(results["error"])
+        if results and results.get("success", False):
+
+            st.markdown("## 📊 Model Results")
+
+            col1, col2 = st.columns(2)
+            col1.info(f"Task: {results['task_type']}")
+            col2.success(f"Model: {results['model']}")
+
+            # Metrics
+            st.markdown("### 📈 Performance")
+            metric_cols = st.columns(len(results["metrics"]))
+            for i, (k, v) in enumerate(results["metrics"].items()):
+                metric_cols[i].metric(k, round(v, 4))
+
+            # Feature Importance
+            st.markdown("### 🧠 Feature Importance")
+
+            if results.get("feature_importance"):
+
+                importance_df = pd.DataFrame(results["feature_importance"])
+                importance_df = importance_df.sort_values(by="importance", ascending=False)
+
+                fig = px.bar(
+                    importance_df.head(15),
+                    x="importance",
+                    y="feature",
+                    orientation="h"
+                )
+
+                fig.update_layout(height=400, yaxis=dict(autorange="reversed"))
+                st.plotly_chart(fig, width="stretch")
 
             else:
-                
+                st.info("No feature importance available")
 
-                st.markdown("## 📊 Model Results")
+            with st.expander("📌 Selected Features"):
+                st.write(results["features"])
 
-                col1, col2 = st.columns(2)
-                col1.info(f"Task: {results['task_type']}")
-                col2.success(f"Model: {results['model']}")
+            st.divider()
 
-                # Metrics
-                st.markdown("### 📈 Performance")
-                metric_cols = st.columns(len(results["metrics"]))
-                for i, (k, v) in enumerate(results["metrics"].items()):
-                    metric_cols[i].metric(k, round(v, 4))
+            # ===============================
+            # 📘 ADVANCED REPORT (FIXED)
+            # ===============================
+            with st.expander("📘 Detailed Pipeline Report (Advanced)", expanded=False):
 
-                # Feature Importance
-                st.markdown("### 🧠 Feature Importance")
+                logs = results.get("logs", None)
 
-                if results.get("feature_importance"):
+                if logs and len(logs) > 0:
 
-                    importance_df = pd.DataFrame(results["feature_importance"])
-                    importance_df = importance_df.sort_values(by="importance", ascending=False)
+                    sections = {
+                        "📊 Data Profiling": [],
+                        "⚙️ Preprocessing": [],
+                        "🧠 Feature Selection": [],
+                        "🤖 Model Training": [],
+                        "🏆 Final Results": []
+                    }
 
-                    fig = px.bar(
-                        importance_df.head(15),
-                        x="importance",
-                        y="feature",
-                        orientation="h"
+                    for log in logs:
+                        if "DataProfiler" in log:
+                            sections["📊 Data Profiling"].append(log)
+                        elif "Encoding" in log or "Scaling" in log:
+                            sections["⚙️ Preprocessing"].append(log)
+                        elif "FeatureSelector" in log:
+                            sections["🧠 Feature Selection"].append(log)
+                        elif "Training" in log:
+                            sections["🤖 Model Training"].append(log)
+                        elif "Best Model" in log or "Evaluation" in log:
+                            sections["🏆 Final Results"].append(log)
+
+                    for section, items in sections.items():
+                        if items:
+                            st.markdown(f"### {section}")
+                            for item in items:
+                                st.text(item)
+
+                    st.divider()
+
+                    st.download_button(
+                        "⬇️ Download Full Report",
+                        "\n".join(logs),
+                        file_name="pipeline_report.txt"
                     )
 
-                    fig.update_layout(height=400, yaxis=dict(autorange="reversed"))
-                    st.plotly_chart(fig, use_container_width=True)
-
                 else:
-                    st.info("No feature importance available")
-
-                with st.expander("📌 Selected Features"):
-                    st.write(results["features"])
+                    st.warning("⚠️ Logs not available. Ensure pipeline returns 'logs'.")
 
         else:
-            st.info("Run the pipeline to see results")
+            st.info("Run the pipeline in Data tab to see results")
 
     # ===============================
     # AI CHAT TAB
     # ===============================
     with tab3:
 
-        if results:
+        results = st.session_state.get("results", None)
+
+        if results and results.get("success", False):
 
             from llm_layer.llm_agent import LLMAgent
             from llm_layer.prompt_templates import (
@@ -143,9 +203,6 @@ if uploaded_file:
 
             st.markdown("## 🤖 AI Assistant")
 
-            # -------------------------------
-            # COLLAPSIBLE OVERVIEW
-            # -------------------------------
             with st.expander("📘 AI Overview", expanded=False):
 
                 with st.spinner("Generating insights..."):
@@ -156,9 +213,6 @@ if uploaded_file:
 
             st.divider()
 
-            # -------------------------------
-            # CHAT WINDOW (LIMITED)
-            # -------------------------------
             st.markdown("### 💬 Chat")
 
             MAX_VISIBLE = 10
@@ -168,20 +222,13 @@ if uploaded_file:
                 st.write(f"🧑 {chat['user']}")
                 st.write(f"🤖 {chat['bot']}")
 
-            # -------------------------------
-            # CLEAR CHAT
-            # -------------------------------
             if st.button("🧹 Clear Chat"):
                 st.session_state["chat_history"] = []
                 st.rerun()
 
-            # -------------------------------
-            # CHAT INPUT
-            # -------------------------------
             with st.form("chat_form", clear_on_submit=True):
 
                 user_q = st.text_input("Ask about your model...")
-
                 submitted = st.form_submit_button("Send")
 
                 if submitted and user_q:
@@ -198,4 +245,4 @@ if uploaded_file:
                     st.rerun()
 
         else:
-            st.info("Run the pipeline first to enable AI assistant")
+            st.info("Run the pipeline first from Data tab to enable AI assistant")

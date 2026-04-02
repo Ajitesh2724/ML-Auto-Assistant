@@ -10,7 +10,7 @@ class DecisionEngine:
 
         action = decision["action"]
 
-        # 🚨 SAFETY GUARDS (ADD HERE)
+     
         if action == "encode" and not context["categorical"]:
             print("⚠️ Skipping encode (no categorical data)")
             return context
@@ -31,19 +31,13 @@ class DecisionEngine:
             print("⚠️ Skipping evaluation (already done)")
             return context
 
-        # -------------------------------
-        # EXECUTE TOOL
-        # -------------------------------
+
         result = execute_tool(action, context)
 
-        # -------------------------------
-        # TRACK STEP
-        # -------------------------------
+ 
         context.setdefault("steps_done", []).append(action)
 
-        # -------------------------------
-        # UPDATE STATE
-        # -------------------------------
+     
         if action == "handle_missing":
             context["missing"] = False
 
