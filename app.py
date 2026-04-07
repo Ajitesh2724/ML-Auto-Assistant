@@ -16,9 +16,10 @@ if "chat_history" not in st.session_state:
 if "run_clicked" not in st.session_state:
     st.session_state["run_clicked"] = False
 
-# -------------------------------
-# HEADER
-# -------------------------------
+if "overview" not in st.session_state:
+    st.session_state["overview"] = None
+
+
 st.markdown("""
 <h1 style='text-align: center;'>🤖 ML Auto Assistant</h1>
 <p style='text-align: center; color: gray;'>AutoML + AI Insights Dashboard</p>
@@ -36,7 +37,7 @@ if uploaded_file:
     tab1, tab2, tab3 = st.tabs(["📊 Data", "📈 Model", "🤖 AI Chat"])
 
     # ===============================
-    # DATA TAB
+    # TAB 1: DATA
     # ===============================
     with tab1:
 
@@ -48,24 +49,19 @@ if uploaded_file:
         c3.metric("Missing Values", int(df.isnull().sum().sum()))
 
         with st.expander("🔍 Preview Data"):
-            st.dataframe(df.head(100), width="stretch")
+            st.dataframe(df.head(100), use_container_width=True)
 
         st.divider()
 
-        # -------------------------------
-        # PIPELINE CONTROL
-        # -------------------------------
         st.markdown("### ⚙️ Train Model")
 
         target_column = st.selectbox("🎯 Select Target Column", df.columns)
 
         if st.button("🚀 Run Pipeline"):
             st.session_state["run_clicked"] = True
-            st.session_state["results"] = None  # reset previous
+            st.session_state["results"] = None
+            st.session_state["overview"] = None  # 🔥 reset overview
 
-        # -------------------------------
-        # SAFE EXECUTION (NO DUPLICATE RUN)
-        # -------------------------------
         if st.session_state.get("run_clicked", False):
 
             from core.pipeline import run_pipeline
@@ -75,11 +71,8 @@ if uploaded_file:
 
             st.session_state["results"] = results
             st.session_state["chat_history"] = []
-            st.session_state["run_clicked"] = False  # 🔥 prevent rerun loop
+            st.session_state["run_clicked"] = False
 
-        # -------------------------------
-        # STATUS MESSAGE
-        # -------------------------------
         results = st.session_state.get("results", None)
 
         if results:
@@ -89,7 +82,7 @@ if uploaded_file:
                 st.success("✅ Pipeline Completed")
 
     # ===============================
-    # MODEL TAB
+    # TAB 2: MODEL
     # ===============================
     with tab2:
 
@@ -103,13 +96,12 @@ if uploaded_file:
             col1.info(f"Task: {results['task_type']}")
             col2.success(f"Model: {results['model']}")
 
-            # Metrics
             st.markdown("### 📈 Performance")
             metric_cols = st.columns(len(results["metrics"]))
+
             for i, (k, v) in enumerate(results["metrics"].items()):
                 metric_cols[i].metric(k, round(v, 4))
 
-            # Feature Importance
             st.markdown("### 🧠 Feature Importance")
 
             if results.get("feature_importance"):
@@ -125,7 +117,7 @@ if uploaded_file:
                 )
 
                 fig.update_layout(height=400, yaxis=dict(autorange="reversed"))
-                st.plotly_chart(fig, width="stretch")
+                st.plotly_chart(fig, use_container_width=True)
 
             else:
                 st.info("No feature importance available")
@@ -133,59 +125,11 @@ if uploaded_file:
             with st.expander("📌 Selected Features"):
                 st.write(results["features"])
 
-            st.divider()
-
-            # ===============================
-            # 📘 ADVANCED REPORT (FIXED)
-            # ===============================
-            with st.expander("📘 Detailed Pipeline Report (Advanced)", expanded=False):
-
-                logs = results.get("logs", None)
-
-                if logs and len(logs) > 0:
-
-                    sections = {
-                        "📊 Data Profiling": [],
-                        "⚙️ Preprocessing": [],
-                        "🧠 Feature Selection": [],
-                        "🤖 Model Training": [],
-                        "🏆 Final Results": []
-                    }
-
-                    for log in logs:
-                        if "DataProfiler" in log:
-                            sections["📊 Data Profiling"].append(log)
-                        elif "Encoding" in log or "Scaling" in log:
-                            sections["⚙️ Preprocessing"].append(log)
-                        elif "FeatureSelector" in log:
-                            sections["🧠 Feature Selection"].append(log)
-                        elif "Training" in log:
-                            sections["🤖 Model Training"].append(log)
-                        elif "Best Model" in log or "Evaluation" in log:
-                            sections["🏆 Final Results"].append(log)
-
-                    for section, items in sections.items():
-                        if items:
-                            st.markdown(f"### {section}")
-                            for item in items:
-                                st.text(item)
-
-                    st.divider()
-
-                    st.download_button(
-                        "⬇️ Download Full Report",
-                        "\n".join(logs),
-                        file_name="pipeline_report.txt"
-                    )
-
-                else:
-                    st.warning("⚠️ Logs not available. Ensure pipeline returns 'logs'.")
-
         else:
             st.info("Run the pipeline in Data tab to see results")
 
     # ===============================
-    # AI CHAT TAB
+    # TAB 3: AI CHAT
     # ===============================
     with tab3:
 
@@ -203,13 +147,14 @@ if uploaded_file:
 
             st.markdown("## 🤖 AI Assistant")
 
-            with st.expander("📘 AI Overview", expanded=False):
-
-                with st.spinner("Generating insights..."):
+            # 🔥 GENERATE OVERVIEW ONLY ONCE
+            if st.session_state["overview"] is None:
+                with st.spinner("Generating AI insights..."):
                     prompt = get_explanation_prompt(results)
-                    explanation = agent.call_llm(prompt)
+                    st.session_state["overview"] = agent.call_llm(prompt)
 
-                st.write(explanation)
+            with st.expander("📘 AI Overview", expanded=False):
+                st.write(st.session_state["overview"])
 
             st.divider()
 

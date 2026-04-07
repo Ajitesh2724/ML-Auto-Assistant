@@ -1,4 +1,3 @@
-
 def get_decision_prompt(context):
 
     return f"""
@@ -41,39 +40,58 @@ def get_explanation_prompt(results):
     return f"""
 You are an expert Machine Learning assistant.
 
-Analyze:
+Analyze the following:
 
 Task: {results['task_type']}
 Model: {results['model']}
 Metrics: {results['metrics']}
 Top Features: {results['features'][:5]}
 
-Answer:
+IMPORTANT INSTRUCTIONS:
+- Answer ALL sections fully
+- Do NOT stop mid-sentence
+- Do NOT change topic
+- Keep answers concise but complete
 
-1. Why this model was selected
-2. Is performance good or bad
-3. Overfitting/underfitting signs
-4. 3 improvements
-5. Business interpretation
+Format your response EXACTLY like this:
 
-Keep it simple and clear.
+1. Why this model was selected:
+<answer>
+
+2. Is performance good or bad:
+<answer>
+
+3. Overfitting/underfitting signs:
+<answer>
+
+4. Suggested improvements:
+- point 1
+- point 2
+- point 3
+
+5. Business interpretation:
+<answer>
 """
-
 
 
 def get_chat_prompt(results, user_question):
 
     return f"""
-You are an ML assistant.
+You are an ML assistant answering a user's question.
 
-Context:
-Task: {results['task_type']}
+IMPORTANT RULES:
+- ONLY answer the question
+- DO NOT repeat full analysis
+- DO NOT regenerate overview
+- Keep answer concise and relevant
+- Stay on topic
+
+Context (use only if needed):
 Model: {results['model']}
 Metrics: {results['metrics']}
-Features: {results['features']}
 
 User Question:
 {user_question}
 
-Answer clearly and practically.
+Answer:
 """

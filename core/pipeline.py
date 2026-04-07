@@ -196,7 +196,7 @@ def run_pipeline(
 
             "feature_importance": importance_dict,
 
-            "logs": logs   # 🔥 THIS FIXES YOUR UI
+            "logs": logs 
         }
 
     except Exception as e:
