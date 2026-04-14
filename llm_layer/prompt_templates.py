@@ -51,7 +51,8 @@ IMPORTANT INSTRUCTIONS:
 - Answer ALL sections fully
 - Do NOT stop mid-sentence
 - Do NOT change topic
-- Keep answers concise but complete
+- Keep answers brief.
+- Consider your number of tokens to complete the answer.
 
 Format your response EXACTLY like this:
 
@@ -64,12 +65,7 @@ Format your response EXACTLY like this:
 3. Overfitting/underfitting signs:
 <answer>
 
-4. Suggested improvements:
-- point 1
-- point 2
-- point 3
-
-5. Business interpretation:
+4. Business interpretation:
 <answer>
 """
 
