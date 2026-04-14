@@ -19,6 +19,12 @@ if "run_clicked" not in st.session_state:
 if "overview" not in st.session_state:
     st.session_state["overview"] = None
 
+if "report" not in st.session_state:
+    st.session_state["report"] = None
+
+if "model_explain" not in st.session_state:
+    st.session_state["model_explain"] = None
+
 
 st.markdown("""
 <h1 style='text-align: center;'>🤖 ML Auto Assistant</h1>
@@ -60,17 +66,25 @@ if uploaded_file:
         if st.button("🚀 Run Pipeline"):
             st.session_state["run_clicked"] = True
             st.session_state["results"] = None
-            st.session_state["overview"] = None  # 🔥 reset overview
+            st.session_state["overview"] = None
+            st.session_state["report"] = None
+            st.session_state["model_explain"] = None
 
         if st.session_state.get("run_clicked", False):
 
             from core.pipeline import run_pipeline
+            from utils.report_generator import generate_advanced_report
 
             with st.spinner("Training model..."):
                 results = run_pipeline(df, target_column)
 
             st.session_state["results"] = results
             st.session_state["chat_history"] = []
+
+            # 🔥 Generate Report
+            if results.get("success", False):
+                st.session_state["report"] = generate_advanced_report(results, df)
+
             st.session_state["run_clicked"] = False
 
         results = st.session_state.get("results", None)
@@ -90,40 +104,94 @@ if uploaded_file:
 
         if results and results.get("success", False):
 
-            st.markdown("## 📊 Model Results")
+            # 🔥 SUBTABS
+            subtab1, subtab2 = st.tabs(["📊 Results", "📄 Report Center"])
 
-            col1, col2 = st.columns(2)
-            col1.info(f"Task: {results['task_type']}")
-            col2.success(f"Model: {results['model']}")
+            # ============================
+            # 📊 SUBTAB 1: RESULTS
+            # ============================
+            with subtab1:
 
-            st.markdown("### 📈 Performance")
-            metric_cols = st.columns(len(results["metrics"]))
+                st.markdown("## 📊 Model Results")
 
-            for i, (k, v) in enumerate(results["metrics"].items()):
-                metric_cols[i].metric(k, round(v, 4))
+                col1, col2 = st.columns(2)
+                col1.info(f"Task: {results['task_type']}")
+                col2.success(f"Model: {results['model']}")
 
-            st.markdown("### 🧠 Feature Importance")
+                st.markdown("### 📈 Performance")
+                metric_cols = st.columns(len(results["metrics"]))
 
-            if results.get("feature_importance"):
+                for i, (k, v) in enumerate(results["metrics"].items()):
+                    metric_cols[i].metric(k, round(v, 4))
 
-                importance_df = pd.DataFrame(results["feature_importance"])
-                importance_df = importance_df.sort_values(by="importance", ascending=False)
+                st.markdown("### 🧠 Feature Importance")
 
-                fig = px.bar(
-                    importance_df.head(15),
-                    x="importance",
-                    y="feature",
-                    orientation="h"
-                )
+                if results.get("feature_importance"):
 
-                fig.update_layout(height=400, yaxis=dict(autorange="reversed"))
-                st.plotly_chart(fig, use_container_width=True)
+                    importance_df = pd.DataFrame(results["feature_importance"])
+                    importance_df = importance_df.sort_values(by="importance", ascending=False)
 
-            else:
-                st.info("No feature importance available")
+                    fig = px.bar(
+                        importance_df.head(15),
+                        x="importance",
+                        y="feature",
+                        orientation="h"
+                    )
 
-            with st.expander("📌 Selected Features"):
-                st.write(results["features"])
+                    fig.update_layout(height=400, yaxis=dict(autorange="reversed"))
+                    st.plotly_chart(fig, use_container_width=True)
+
+                else:
+                    st.info("No feature importance available")
+
+                with st.expander("📌 Selected Features"):
+                    st.write(results["features"])
+
+                # 🔍 ADVANCED INSIGHTS
+                st.divider()
+                st.markdown("## 🔍 Advanced Insights")
+
+                with st.expander("📊 Data Summary"):
+                    st.write(df.describe())
+
+                with st.expander("🧾 Pipeline Logs"):
+                    for log in results.get("logs", []):
+                        st.text(log)
+
+            # ============================
+            # 📄 SUBTAB 2: REPORT CENTER
+            # ============================
+            with subtab2:
+
+                st.markdown("## 📄 Advanced Report Center")
+
+                report = st.session_state.get("report", None)
+
+                if report:
+
+                    with st.expander("📖 Preview Report"):
+                        st.text_area("Report", report, height=400)
+
+                    col1, col2 = st.columns(2)
+
+                    with col1:
+                        st.download_button(
+                            label="📥 Download TXT Report",
+                            data=report,
+                            file_name="ml_advanced_report.txt",
+                            mime="text/plain"
+                        )
+
+                    with col2:
+                        st.download_button(
+                            label="📄 Download Markdown",
+                            data=report,
+                            file_name="ml_report.md",
+                            mime="text/markdown"
+                        )
+
+                else:
+                    st.info("Run the pipeline to generate report")
 
         else:
             st.info("Run the pipeline in Data tab to see results")
@@ -147,7 +215,6 @@ if uploaded_file:
 
             st.markdown("## 🤖 AI Assistant")
 
-            # 🔥 GENERATE OVERVIEW ONLY ONCE
             if st.session_state["overview"] is None:
                 with st.spinner("Generating AI insights..."):
                     prompt = get_explanation_prompt(results)
