@@ -52,7 +52,7 @@ IMPORTANT INSTRUCTIONS:
 - Do NOT stop mid-sentence
 - Do NOT change topic
 - Keep answers brief.
-- Consider your number of tokens to complete the answer.
+- Consider your number of tokens to complete the answer with full-stop.
 
 Format your response EXACTLY like this:
 

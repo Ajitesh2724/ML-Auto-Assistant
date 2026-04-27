@@ -75,8 +75,39 @@ if uploaded_file:
             from core.pipeline import run_pipeline
             from utils.report_generator import generate_advanced_report
 
-            with st.spinner("Training model..."):
-                results = run_pipeline(df, target_column)
+            # 🔥 Progress UI
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            log_box = st.empty()
+
+            logs = []
+
+            def progress_callback(percent, message):
+                progress_bar.progress(percent)
+
+                # Avoid duplicate logs
+                if not logs or logs[-1] != message:
+                    logs.append(message)
+
+                # Show current step ONLY here
+                status_text.markdown(f"### 🔄 {message}")
+
+                # Show ONLY previous steps (muted)
+                previous_logs = logs[:-1]
+
+                styled_logs = [
+                    f"<span style='color:gray'>{log}</span>"
+                    for log in previous_logs[-6:]
+                ]
+
+                log_box.markdown("<br>".join(styled_logs), unsafe_allow_html=True)
+
+            # 🔥 Run pipeline with progress tracking
+            results = run_pipeline(
+                df,
+                target_column,
+                progress_callback=progress_callback
+            )
 
             st.session_state["results"] = results
             st.session_state["chat_history"] = []
@@ -84,6 +115,10 @@ if uploaded_file:
             # 🔥 Generate Report
             if results.get("success", False):
                 st.session_state["report"] = generate_advanced_report(results, df)
+
+            # 🔥 Clear progress UI
+            progress_bar.empty()
+            status_text.empty()
 
             st.session_state["run_clicked"] = False
 

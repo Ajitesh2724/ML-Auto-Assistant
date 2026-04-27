@@ -62,7 +62,8 @@ def get_feature_importance(model, feature_names):
 def run_pipeline(
     df,
     target_column,
-    task_type="auto"
+    task_type="auto",
+    progress_callback=None
 ):
 
     logs = []
@@ -71,26 +72,31 @@ def run_pipeline(
         print(msg)
         logs.append(msg)
 
+    def update_progress(step, message):
+        if progress_callback:
+            progress_callback(step, message)
+
     try:
 
         log("🚀 Pipeline started")
+        update_progress(10, "🚀 Pipeline started")
 
         if task_type == "auto":
             task_type = detect_task_type(df[target_column])
 
         log(f"[Task] Detected task type: {task_type}")
-
+        update_progress(20, "Task detected")
        
         profiler = DataProfiler(df)
         numeric_cols, categorical_cols, _ = profiler.summary()
 
         log(f"[DataProfiler] Numeric Columns: {numeric_cols}")
         log(f"[DataProfiler] Categorical Columns: {categorical_cols}")
-
+        update_progress(25, "Data profiling done")
        
         df = df.fillna(0)
         log("[Preprocessing] Missing values filled with 0")
-
+        update_progress(30, "Missing values handled")
        
         df = encode_categorical(
             df,
@@ -98,14 +104,14 @@ def run_pipeline(
             target_column=target_column
         )
         log("[Preprocessing] Encoding applied: onehot")
-
+        update_progress(40, "Encoding complete")
         
         df = scale_features(
             df,
             target_column=target_column
         )
         log("[Preprocessing] Scaling applied: standard")
-
+        update_progress(50, "Scaling applied")
        
         X = df.drop(columns=[target_column])
         y = df[target_column]
@@ -118,7 +124,7 @@ def run_pipeline(
         )
 
         log(f"[Split] Train shape: {X_train.shape}, Test shape: {X_test.shape}")
-
+        update_progress(60, "Train-test split done")
   
         log("[FeatureSelector] Starting feature selection")
 
@@ -130,7 +136,7 @@ def run_pipeline(
         )
 
         log(f"[FeatureSelector] Selected {len(X_train.columns)} features")
-
+        update_progress(70, "Feature selection done")
         # align test columns safely
         X_test = X_test.reindex(
             columns=X_train.columns,
@@ -139,7 +145,7 @@ def run_pipeline(
 
        
         log("[ModelTrainer] Training models...")
-
+        update_progress(80, "Training models...")
         trainer = ModelTrainer(task_type=task_type)
 
         trainer.train(
@@ -150,7 +156,7 @@ def run_pipeline(
         )
 
         log(f"[ModelTrainer] Best model: {trainer.best_model_name}")
-
+        update_progress(90, "Best model selected")
         preds = trainer.predict(X_test)
 
         
@@ -161,6 +167,7 @@ def run_pipeline(
         )
 
         log(f"[Evaluation] Metrics: {metrics}")
+        update_progress(95, "Model evaluated")
 
         # -------------------------------
         # FEATURE IMPORTANCE
@@ -178,6 +185,7 @@ def run_pipeline(
             log("[FeatureImportance] Not available for this model")
 
         log("✅ Pipeline completed successfully")
+        update_progress(100, "Pipeline completed")
 
         # -------------------------------
         # RETURN
